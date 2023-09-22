@@ -507,7 +507,7 @@ class System():
                 iters += 1
                 # Update states
                 self.update_states(x)
-                self.F
+                self.F      # Update _delta attr
                 self.jac(x)
             except np.linalg.LinAlgError as e:
                 print(f"{e}: No inverse possible to Jacobian.")
