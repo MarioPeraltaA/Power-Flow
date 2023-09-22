@@ -394,7 +394,7 @@ class System():
         Evaluates states given as attributes
         and returns the mismatch column vector
         of P and Q at bus k, alse updates
-        :py:attr:`System._delta` attibute.
+        :py:attr:`System._F` attibute.
 
         """
         Y = self._Y
@@ -439,8 +439,8 @@ class System():
         # Mismatches
         fcal = np.array(Pcals + Qcals)
         fsch = np.array(Psch + Qsch)
-        self._delta = fsch - fcal
-        return self._delta
+        self._F = fsch - fcal
+        return self._F
 
     def update_states(self, x) -> None:
         """Update attributes.
@@ -474,10 +474,10 @@ class System():
             dx[var_ind] = h
             # For small h
             self.update_states(x + dx)
-            fdelta = self.F    # Modify ._delta attr
+            fdelta = self.F    # Modify ._F attr
             sec = (fdelta - f) / h
             J[:, var_ind] = sec
-            self._delta = f    # Restage attr
+            self._F = f    # Restage attr
         self._J = J
         return J
 
@@ -500,10 +500,10 @@ class System():
         self.F
         self.jac(x)
 
-        while (max(np.abs(self._delta)) > tol) and iters < max_iters:
+        while (max(np.abs(self._F)) > tol) and iters < max_iters:
             try:
                 # Newton-Raphson definition
-                x -= np.matmul(np.linalg.inv(self._J), self._delta)
+                x -= np.matmul(np.linalg.inv(self._J), self._F)
                 iters += 1
                 # Update states
                 self.update_states(x)
