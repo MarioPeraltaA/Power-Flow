@@ -11,7 +11,9 @@ Transmission network.
 import numpy as np
 import pandas as pd
 
+
 class sysData():
+
     def __init__(self):
         self._basis = {}
         self._buses = {}
@@ -347,7 +349,7 @@ class System():
                             T._to_bus = to_bus
 
     @property
-    def build_Y(self) -> np.ndarray:
+    def Y(self) -> np.ndarray:
         nBuses = len(self._buses)
         Y = np.zeros((nBuses, nBuses), dtype=complex)
         for i, b in enumerate(self._buses):
@@ -386,12 +388,13 @@ class System():
         return Y
 
     @property
-    def delta_F(self) -> np.ndarray:
+    def F(self) -> np.ndarray:
         """Mismatch functions.
 
         Evaluates states given as attributes
         and returns the mismatch column vector
-        of P and Q at bus k.
+        of P and Q at bus k, alse updates
+        :py:attr:`System._delta` attibute.
 
         """
         Y = self._Y
@@ -465,21 +468,21 @@ class System():
         # Initialize array
         J = np.empty((len(x), len(x)))
         self.update_states(x)
-        f = self.delta_F     # States at previous x
+        f = self.F       # Mismatch due to original x
         for var_ind in range(len(x)):
             dx = np.zeros(len(x))
             dx[var_ind] = h
             # For small h
             self.update_states(x + dx)
-            fdelta = self.delta_F
+            fdelta = self.F    # Modify ._delta attr
             sec = (fdelta - f) / h
             J[:, var_ind] = sec
-            self._delta = f
+            self._delta = f    # Restage attr
         self._J = J
         return J
 
     def newton(self,
-               tol: float = 1e-3,
+               tol: float = 1e-6,
                max_iters: int = 10) -> np.ndarray:
         """Power flow.
 
@@ -493,8 +496,8 @@ class System():
         x = np.array(x0, dtype=float)
         iters = 0
         # Initial conditions
-        self.build_Y
-        self.delta_F
+        self.Y
+        self.F
         self.jac(x)
 
         while (max(np.abs(self._delta)) > tol) and iters < max_iters:
@@ -504,13 +507,13 @@ class System():
                 iters += 1
                 # Update states
                 self.update_states(x)
-                self.delta_F
+                self.F
                 self.jac(x)
             except np.linalg.LinAlgError as e:
                 print(f"{e}: No inverse possible to Jacobian.")
                 return False
         if iters == max_iters:
-            print(f"Newton-Raphson did not converged after {iters} iterations.")
+            print(f"Power-flow did not converged after {iters} iterations.")
             return None
 
         return x
