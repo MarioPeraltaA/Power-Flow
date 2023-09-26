@@ -255,7 +255,7 @@ class System():
         Slack bus, Load buses, Voltage-controlled buses.
 
         Creats attributes:
-            :py:attr:`System._but_slack_buses`
+            :py:attr:`System._non_slack_buses`
             :py:attr:`System._PQ_buses`
             :py:attr:`System._PV_buses`
 
@@ -310,11 +310,9 @@ class System():
                     b._QL += c.B / self.Sb
 
         # Set new attributes
-        PQs = [q for q in self._buses if q.Code == "PQ"]
-        PVs = [g for g in self._buses if g.Code == "PV"]
-        self._but_slack_buses = PQs + PVs
-        self._PQ_buses = PQs
-        self._PV_buses = PVs
+        self._non_slack_buses = PQbuses + PVbuses
+        self._PQ_buses = PQbuses
+        self._PV_buses = PVbuses
 
     def from_to_buses(self):
         """Ends of lines and transformers.
@@ -450,12 +448,12 @@ class System():
 
         """
         # V_angles: All but slack buses
-        for i, bus in enumerate(self._but_slack_buses):
+        for i, bus in enumerate(self._non_slack_buses):
             bus._phase = x[i]
 
         # V_magnitudes: PQ buses only
         for n, bus in enumerate(self._PQ_buses):
-            bus._V = x[len(self._but_slack_buses)+n]
+            bus._V = x[len(self._non_slack_buses)+n]
 
     def jac(self,
             x: np.ndarray,
@@ -487,12 +485,17 @@ class System():
         """Power flow.
 
         Runs a power flow study by Newton-Raphson iterative
-        method. It returns `False` in case the method
-        dit not converge.
+        method. It modifies the attributes of all buses but
+        slack.
+        It returns `None` in case the method
+        dit not converge and `False` in case Jacobian matrix
+        turned out not invertible; otherwise, it returns
+        the vectors of states that minimized the mismatch
+        :py:attr:`System._F` functions.
 
         """
         # Flat-start
-        x0 = len(self._but_slack_buses)*[0] + len(self._PQ_buses)*[1]
+        x0 = len(self._non_slack_buses)*[0] + len(self._PQ_buses)*[1]
         x = np.array(x0, dtype=float)
         iters = 0
         # Initial conditions
